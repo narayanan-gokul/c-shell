@@ -1,6 +1,9 @@
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/wait.h>
+#include <unistd.h>
 #include "../lib/linenoise.h"
 
 #define PROMPT "$ "
@@ -9,6 +12,7 @@
 #define TOKEN_SEPARATORS " \t"
 
 int s_read(char *input, char **args);
+int s_execute(char *cmd, char **args);
 
 int s_read(char *input, char **args) {
 	int i = 0;
@@ -19,6 +23,29 @@ int s_read(char *input, char **args) {
 	}
 	args[i] = NULL;
 	return i;
+}
+
+int s_execute(char *cmd, char **args) {
+	fprintf(stdout, "Executing command: %s\n", cmd);
+
+	int status;
+	pid_t pid;
+
+	pid = fork();
+
+	if (pid < 0) {
+		fprintf(stderr, "Could not execute command!\n");
+		return -1;
+	}
+
+	if (pid == 0) {
+		execvp(cmd, args);
+	} else if (waitpid(pid, &status, 0) != pid) {
+		fprintf(stderr, "Could not wait for kiddo!\n");
+		return -1;
+	}
+
+	return status;
 }
 
 int main(void) {
@@ -44,6 +71,8 @@ int main(void) {
 		}
 
 		// TODO: EVAL + PRINT
+		char *cmd = args[0];
+		s_execute(cmd, args);
 
 		linenoiseHistoryAdd(line);
 		linenoiseFree(line);
